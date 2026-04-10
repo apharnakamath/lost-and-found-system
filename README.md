@@ -25,7 +25,6 @@ The Lost and Found Management System is a full-stack application designed to fac
 - **Item Reporting**: Users can submit detailed reports for both lost and found items. Reports include descriptions, dates, and image references.
 - **Categorization & Location Tracking**: Items are strictly associated with defined Categories (e.g., Electronics, Documents) and Locations (e.g., Library, Cafeteria) to optimize search and filtering capabilities.
 - **Formal Claim System**: Users browsing found items can initiate a formal Claim, requiring them to submit proof of ownership for review.
-- **Admin Dashboard**: Administrators hold elevated privileges to verify reported items, review proof of ownership, and either approve or reject pending claims.
 
 ## Database Architecture
 
