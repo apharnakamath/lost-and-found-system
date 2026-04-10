@@ -30,10 +30,9 @@ public class ClaimController {
     }
 
     @PatchMapping("/{id}/approve")
-    public ResponseEntity<?> approveClaim(@PathVariable Long id, @RequestParam Long adminId) {
+    public ResponseEntity<?> approveClaim(@PathVariable Long id, @RequestParam Long reporterId) {
         try {
-            Admin admin = (Admin) userService.getUserById(adminId);
-            Claim approved = claimService.approveClaim(id, admin);
+            Claim approved = claimService.approveClaim(id, reporterId);
             return ResponseEntity.ok(approved);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -42,11 +41,10 @@ public class ClaimController {
 
     @PatchMapping("/{id}/reject")
     public ResponseEntity<?> rejectClaim(@PathVariable Long id, 
-                                        @RequestParam Long adminId, 
-                                        @RequestParam String reason) {
+                                        @RequestParam Long reporterId, 
+                                        @RequestParam(required = false, defaultValue = "Item belongs to someone else") String reason) {
         try {
-            Admin admin = (Admin) userService.getUserById(adminId);
-            Claim rejected = claimService.rejectClaim(id, admin, reason);
+            Claim rejected = claimService.rejectClaim(id, reporterId, reason);
             return ResponseEntity.ok(rejected);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

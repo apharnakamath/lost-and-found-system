@@ -496,42 +496,69 @@ elif page == "👤 My Profile":
             </div>
         </div>""", unsafe_allow_html=True)
 
-        # Reported items
+       # Reported items & Claims Management
         st.markdown("#### Items I Reported")
         lost_items,  _ = api("GET", "/items/lost")
         found_items, _ = api("GET", "/items/found")
+        all_claims, _  = api("GET", "/claims") # Fetch all claims to match them to items
+
         all_items = (lost_items or []) + (found_items or [])
         mine = [i for i in all_items if (i.get("reporter") or {}).get("userId") == uid]
-        if mine:
-            df = pd.DataFrame([{
-                "ID": i["itemId"],
-                "Title": i["title"],
-                "Type": "LOST" if "dateLost" in i else "FOUND",
-                "Status": i.get("status"),
-                "Reported": fmt_dt(i.get("dateReported")),
-            } for i in mine])
-            st.dataframe(df, use_container_width=True, hide_index=True)
-        else:
+        all_claims = all_claims or []
+
+        if not mine:
             st.info("No items reported yet.")
-
-    with col_edit:
-        st.markdown("#### ✏️ Update Profile")
-        with st.form("profile_form"):
-            name  = st.text_input("Name",  value=u.get("name",""))
-            phone = st.text_input("Phone", value=u.get("phone",""))
-            pw    = st.text_input("New Password (leave blank to keep current)", type="password")
-            submitted = st.form_submit_button("Save Changes", use_container_width=True)
-
-        if submitted:
-            payload = {"name": name, "phone": phone}
-            if pw:
-                payload["password"] = pw
-            data, err = api("PUT", f"/users/{uid}", json=payload)
-            if err:
-                st.error(err)
-            else:
-                st.session_state.user.update(data)
-                st.success("Profile updated!")
+        else:
+            for item in mine[::-1]:
+                itype = "🔴 LOST" if "dateLost" in item else "🟢 FOUND"
+                # Create an expandable dropdown for each item the user reported
+                with st.expander(f"{itype} — {item.get('title', '—')}  [{item.get('status', 'PENDING')}]"):
+                    st.markdown(f"**Reported On:** {fmt_dt(item.get('dateReported'))}")
+                    st.markdown(f"**Description:** {item.get('description', '—')}")
+                    st.markdown("---")
+                    
+                    # Filter claims that belong to this specific item
+                    item_claims = [c for c in all_claims if (c.get("item") or {}).get("itemId") == item["itemId"]]
+                    
+                    if not item_claims:
+                        st.info("No claims have been filed for this item yet.")
+                    else:
+                        st.markdown("##### 📩 Claims on this item:")
+                        for claim in item_claims:
+                            claimant = claim.get("claimant") or {}
+                            cid = claim.get("claimId")
+                            status = claim.get("status", "PENDING")
+                            
+                            # Display the claim details
+                            st.markdown(f"""
+                            <div style="background:#2b3142; padding:15px; border-radius:8px; margin-bottom:10px; border: 1px solid #4f46e5;">
+                                <strong>Claim #{cid}</strong> filed by <strong>{claimant.get('name', 'Unknown')}</strong> ({claimant.get('email', '')})<br><br>
+                                <strong>Status:</strong> {status_badge(status)} <br>
+                                <strong>Proof Provided:</strong> {claim.get('proofDescription', '—')}
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Only show Approve/Reject buttons if the claim is still PENDING
+                            if status == "PENDING":
+                                c1, c2 = st.columns(2)
+                                with c1:
+                                    if st.button("✅ Approve Claim", key=f"user_app_{cid}", use_container_width=True):
+                                        # Note: Make sure your Spring Boot backend accepts reporterId here!
+                                        _, err = api("PATCH", f"/claims/{cid}/approve?reporterId={uid}") 
+                                        if err: 
+                                            st.error(err)
+                                        else: 
+                                            st.success("Claim Approved!")
+                                            st.rerun()
+                                            
+                                with c2:
+                                    if st.button("❌ Reject Claim", key=f"user_rej_{cid}", use_container_width=True):
+                                        _, err = api("PATCH", f"/claims/{cid}/reject?reporterId={uid}&reason=Rejected by owner")
+                                        if err: 
+                                            st.error(err)
+                                        else: 
+                                            st.warning("Claim Rejected.")
+                                            st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE: ADMIN PANEL

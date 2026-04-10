@@ -10,12 +10,12 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * User Entity - Represents a user in the system
@@ -29,6 +29,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @EntityListeners(AuditingEntityListener.class)
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "user_type", discriminatorType = DiscriminatorType.STRING)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
 
     @Id
@@ -68,11 +69,13 @@ public class User {
     private LocalDateTime updatedAt;
 
     // Relationships
-    @JsonIgnoreProperties({"reporter", "hibernateLazyInitializer", "handler"})
+    
+    // --- THIS IS THE FIX FOR THE PROFILE REPORTS ---
+    @JsonIgnoreProperties({"reporter", "claims", "hibernateLazyInitializer", "handler"})
     @OneToMany(mappedBy = "reporter", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Item> reportedItems = new ArrayList<>();
 
-    @JsonIgnoreProperties({"claimant", "hibernateLazyInitializer", "handler"})
+    @JsonIgnore
     @OneToMany(mappedBy = "claimant", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Claim> claims = new ArrayList<>();
 
@@ -98,5 +101,21 @@ public class User {
 
     public boolean isAdmin() {
         return "ADMIN".equals(this.role);
+    }
+
+    // --- NEW FIX: Force timestamps before saving so registration works ---
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

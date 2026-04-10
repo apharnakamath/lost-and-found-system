@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // Added Import
 
 /**
  * Category Entity - Represents item categories (Electronics, Clothing, Documents, etc.)
@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // Added Safety Net
 public class Category {
 
     @Id
@@ -34,7 +35,6 @@ public class Category {
 
     @Column(length = 100)
     private String icon; // Icon class or image path
-    
     
     @JsonIgnore
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

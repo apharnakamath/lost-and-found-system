@@ -1,6 +1,5 @@
 package com.lostandfound.service;
 
-import com.lostandfound.model.Admin;
 import com.lostandfound.model.Claim;
 import com.lostandfound.model.Item;
 import com.lostandfound.model.User;
@@ -30,7 +29,6 @@ public class ClaimService {
         
         claim.setClaimant(claimant);
         claim.setItem(item);
-        claim.setClaimDate(LocalDateTime.now());
         claim.setStatus("PENDING");
         
         Claim savedClaim = claimRepository.save(claim);
@@ -56,49 +54,66 @@ public class ClaimService {
         return savedClaim;
     }
 
-    public Claim approveClaim(Long claimId, Admin admin) {
-        log.info("Approving claim: {} by admin: {}", claimId, admin.getEmail());
+    public Claim approveClaim(Long claimId, Long reporterId) {
+        log.info("Approving claim: {} by reporter ID: {}", claimId, reporterId);
         
         Claim claim = getClaimById(claimId);
-        claim.approve(admin);
+        Item item = claim.getItem();
+
+        // SECURITY: Ensure the person approving is the original reporter
+        if (!item.getReporter().getUserId().equals(reporterId)) {
+            throw new RuntimeException("Unauthorized: Only the user who reported this item can approve the claim.");
+        }
+        
+        claim.setStatus("APPROVED");
+        
+        // Automatically close the item since it has been successfully claimed
+        item.setStatus("CLAIMED");
         
         Claim approved = claimRepository.save(claim);
         
         // Notify the claimant
         notificationService.createNotification(
-            "Congratulations! Your claim for item '" + claim.getItem().getTitle() + "' has been approved.",
+            "Congratulations! Your claim for item '" + item.getTitle() + "' has been approved.",
             "SUCCESS",
             claim.getClaimant(),
-            claim.getItem(),
+            item,
             approved
         );
         
         // Notify the item reporter
         notificationService.createNotification(
-            "A claim for your item '" + claim.getItem().getTitle() + "' has been approved.",
+            "You have approved the claim for your item '" + item.getTitle() + "'.",
             "INFO",
-            claim.getItem().getReporter(),
-            claim.getItem(),
+            item.getReporter(),
+            item,
             approved
         );
         
         return approved;
     }
 
-    public Claim rejectClaim(Long claimId, Admin admin, String reason) {
-        log.info("Rejecting claim: {} by admin: {}", claimId, admin.getEmail());
+    public Claim rejectClaim(Long claimId, Long reporterId, String reason) {
+        log.info("Rejecting claim: {} by reporter ID: {}", claimId, reporterId);
         
         Claim claim = getClaimById(claimId);
-        claim.reject(admin, reason);
+        Item item = claim.getItem();
+
+        // SECURITY: Ensure the person rejecting is the original reporter
+        if (!item.getReporter().getUserId().equals(reporterId)) {
+            throw new RuntimeException("Unauthorized: Only the user who reported this item can decline the claim.");
+        }
+        
+        claim.setStatus("DECLINED");
         
         Claim rejected = claimRepository.save(claim);
         
         // Notify the claimant
         notificationService.createNotification(
-            "Your claim for item '" + claim.getItem().getTitle() + "' has been rejected. Reason: " + reason,
+            "Your claim for item '" + item.getTitle() + "' has been declined. Reason: " + reason,
             "WARNING",
             claim.getClaimant(),
-            claim.getItem(),
+            item,
             rejected
         );
         
@@ -119,7 +134,7 @@ public class ClaimService {
     }
 
     public List<Claim> getPendingClaims() {
-        return claimRepository.findAllPendingClaimsWithItems();
+        return claimRepository.findAllPendingClaimsWithItems(); // Keep if you have this custom query, otherwise change to findByStatus("PENDING")
     }
 
     public List<Claim> getClaimsByClaimant(User claimant) {

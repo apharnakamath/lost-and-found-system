@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // Added Import
 
 import java.time.LocalDateTime;
 
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @DiscriminatorValue("FOUND")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // Added Safety Net
 public class FoundItem extends Item {
 
     private LocalDateTime dateFound;

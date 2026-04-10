@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +27,7 @@ import java.util.List;
 @EntityListeners(AuditingEntityListener.class)
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "item_type", discriminatorType = DiscriminatorType.STRING)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public abstract class Item {
 
     @Id
@@ -60,15 +61,19 @@ public abstract class Item {
     protected LocalDateTime updatedAt;
 
     // Relationships
-   @JsonIgnoreProperties({"reportedItems", "claims", "notifications", "hibernateLazyInitializer", "handler"})
-    @ManyToOne(fetch = FetchType.LAZY)
+    
+    // --- THIS IS THE FIX FOR THE REPORTER ---
+    @JsonIgnoreProperties({"reportedItems", "claims", "notifications", "password", "hibernateLazyInitializer", "handler"})
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "reporter_id", nullable = false)
     protected User reporter;
 
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id", nullable = false)
     protected Category category;
 
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "location_id", nullable = false)
     protected Location location;
